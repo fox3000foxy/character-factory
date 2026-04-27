@@ -1,6 +1,6 @@
 {
 	"name": "character-factory",
-	"version": "0.0.1",
+	"version": "1.0.0",
 	"license": "MIT",
 	"description": "A Lorelei avatar advanced builder (Documentation is in French unfortunately 🥀).",
 	"repository": {
