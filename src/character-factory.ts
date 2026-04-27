@@ -816,7 +816,7 @@ export class CharacterFactory {
       const sharp = (await import("sharp")).default;      
       return sharp(Buffer.from(this.buildSvg())).resize(size, size).png().toBuffer();
     }
-    catch (e) {
+    catch (_e: unknown) {
       throw new Error("Sharp is required to build PNG. Please install it with `npm install sharp` or with your favorite package installer.");
     }
   }
