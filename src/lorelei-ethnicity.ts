@@ -19,14 +19,22 @@ import { Hair, HairColor, SkinColor, } from "./lorelei-traits";
  * These are probabilistic abstractions, not strict biological classifications.
  */
 export enum Ethnicity {
-  NorthEuropean = "NORTH_EUROPEAN", // Scandinavia, Netherlands, Northern UK
-  WestEuropean  = "WEST_EUROPEAN",  // France, Germany, UK general
-  SouthEuropean = "SOUTH_EUROPEAN", // Mediterranean (future extensions)
-  EastAsian     = "EAST_ASIAN",     // Japan, China, Korea
-  SouthAsian    = "SOUTH_ASIAN",    // India, Pakistan, Bangladesh
-  Latino        = "LATINO",         // Brazil, Mexico, Latin America
-  BlackAfrican  = "BLACK_AFRICAN",  // Sub-Saharan Africa & diaspora
-  Mixed         = "MIXED",          // Catch-all for highly diverse countries
+  /** Scandinavia, Netherlands, Northern UK. */
+  NorthEuropean = "NORTH_EUROPEAN",
+  /** France, Germany, UK general. */
+  WestEuropean  = "WEST_EUROPEAN",
+  /** Mediterranean (future extensions). */
+  SouthEuropean = "SOUTH_EUROPEAN",
+  /** Japan, China, Korea. */
+  EastAsian     = "EAST_ASIAN",
+  /** India, Pakistan, Bangladesh. */
+  SouthAsian    = "SOUTH_ASIAN",
+  /** Brazil, Mexico, Latin America. */
+  Latino        = "LATINO",
+  /** Sub-Saharan Africa & diaspora. */
+  BlackAfrican  = "BLACK_AFRICAN",
+  /** Catch-all for highly diverse countries. */
+  Mixed         = "MIXED",
 }
 
 // ── Physical profiles per ethnicity ──────────────────────────────────────────
@@ -578,18 +586,31 @@ export const ETHNICITY_PROFILES: Record<Ethnicity, EthnicityProfile> = {
 
 /** Countries supported for ethnicity-weighted character generation. */
 export enum Country {
+  /** United States of America. */
   USA         = "USA",
+  /** Canada. */
   Canada      = "Canada",
+  /** United Kingdom. */
   UK          = "UK",
+  /** Australia. */
   Australia   = "Australia",
+  /** Germany. */
   Germany     = "Germany",
+  /** France. */
   France      = "France",
+  /** Japan. */
   Japan       = "Japan",
+  /** China. */
   China       = "China",
+  /** India. */
   India       = "India",
+  /** Brazil. */
   Brazil      = "Brazil",
+  /** Sweden. */
   Sweden      = "Sweden",
+  /** Netherlands. */
   Netherlands = "Netherlands",
+  /** Denmark. */
   Denmark     = "Denmark",
 }
 

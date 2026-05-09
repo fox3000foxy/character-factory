@@ -6,8 +6,11 @@ import { Eyes, HairFemale, HairMale, HeadShape, Mouth, type Hair } from "./lorel
 
 /** Character gender, influencing head shape, hairstyle, eye, and mouth pools. */
 export enum Gender {
+  /** Female gender presentation. */
   Female  = "FEMALE",
+  /** Male gender presentation. */
   Male    = "MALE",
+  /** Neutral or non-binary gender presentation. */
   Neutral = "NEUTRAL",
 }
 
