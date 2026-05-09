@@ -4,12 +4,14 @@ import * as crypto from "node:crypto";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
+import { Gender, GENDER_POOLS } from "./lorelei-gender";
+import { Mood, MOOD_POOLS } from "./lorelei-mood";
 import {
   BackgroundColor, Beard, Earrings, Eyebrows, EyeColor, Eyes,
-  Gender, GENDER_POOLS, Glasses, Hair, HairAccessory, HairColor,
-  HairFemale, HairMale, HairUnisex, HeadShape, Mood, MOOD_POOLS,
+  Glasses, Hair, HairAccessory, HairColor,
+  HairFemale, HairMale, HairUnisex, HeadShape,
   Mouth, Nose, SkinColor,
-} from "./lorelei-enums";
+} from "./lorelei-traits";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // UTILITIES
