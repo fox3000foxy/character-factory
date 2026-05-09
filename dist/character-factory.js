@@ -3,13 +3,35 @@ import { createAvatar } from "@dicebear/core";
 import * as crypto from "node:crypto";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { BackgroundColor, Beard, Earrings, Eyebrows, EyeColor, Eyes, Gender, GENDER_POOLS, Glasses, Hair, HairAccessory, HairColor, HairFemale, HairMale, HairUnisex, HeadShape, Mood, MOOD_POOLS, Mouth, Nose, SkinColor } from "./lorelei-enums";
+import { BackgroundColor, Beard, Earrings, Eyebrows, EyeColor, Eyes, Glasses, Hair, HairAccessory, HairColor, HairFemale, HairMale, HairUnisex, HeadShape, Mouth, Nose, SkinColor, } from "./lorelei-traits";
+import { Gender, GENDER_POOLS } from "./lorelei-gender";
+import { Mood, MOOD_POOLS } from "./lorelei-mood";
+/**
+ * Returns a uniformly random element from an array.
+ *
+ * @param arr - Non-empty source array.
+ * @returns A randomly selected element.
+ */
 export function pick(arr) {
     return arr[Math.floor(Math.random() * arr.length)];
 }
+/**
+ * Returns a uniformly random value from a TypeScript enum.
+ *
+ * @param e - The enum object (`Record<string, T>`).
+ * @returns A randomly selected enum value.
+ */
 export function pickEnum(e) {
     return pick(Object.values(e));
 }
+/**
+ * Recursively merges `source` into `target`.
+ * Only explicitly defined fields in `source` overwrite `target`; `undefined` values are ignored.
+ *
+ * @param target - Base object (shallow-copied, never mutated).
+ * @param source - Partial patch to apply on top.
+ * @returns A new merged object.
+ */
 function deepMerge(target, source) {
     const result = { ...target };
     for (const key of Object.keys(source)) {
@@ -25,24 +47,32 @@ function deepMerge(target, source) {
     }
     return result;
 }
-/** Tire un allèle depuis un porteur — porteur observé = forcément au moins un D. */
+/** Draws an allele from a carrier — an observed carrier always has at least one D. */
 function drawAllele() {
     return Math.random() < 0.5 ? "D" : "R";
 }
-/** Combine deux allèles → "dominant" si au moins un D, "recessive" si RR. */
+/** Combines two alleles → `"dominant"` if at least one D, `"recessive"` if RR. */
 function combine(a, b) {
     return a === "D" || b === "D" ? "dominant" : "recessive";
 }
 /**
- * Résout le trait enfant depuis un ordre de dominance explicite.
- * L'index le plus élevé = le plus dominant.
- * Si la résolution donne "dominant" → on retourne le trait au rang le plus élevé.
- * Si "recessive"                   → on retourne le trait au rang le plus bas.
+ * Resolves the child's trait from an explicit dominance order.
+ * The highest index = most dominant.
+ *
+ * - `"dominant"` resolution → highest-ranked trait wins.
+ * - `"recessive"` resolution → lowest-ranked trait wins.
+ *
+ * Values not found in `order` (e.g. fantasy colors) fall back to a 50/50 coin flip.
+ *
+ * @param a     - Trait value from parent A.
+ * @param b     - Trait value from parent B.
+ * @param order - Dominance order array, from most recessive (index 0) to most dominant.
+ * @returns The resolved child trait.
  */
 function resolveByRank(a, b, order) {
     const idxA = order.indexOf(a);
     const idxB = order.indexOf(b);
-    // Valeur inconnue (ex: couleur fantaisie hors ordre) → 50/50
+    // Unknown value (e.g. fantasy color not in order) → 50/50
     if (idxA === -1 || idxB === -1)
         return Math.random() < 0.5 ? a : b;
     const dominantVal = idxA >= idxB ? a : b;
@@ -50,31 +80,37 @@ function resolveByRank(a, b, order) {
     const result = combine(drawAllele(), drawAllele());
     return result === "dominant" ? dominantVal : recessiveVal;
 }
-/** Pour les traits sans ordre biologique clair : héritage 50/50. */
+/**
+ * For traits without a clear biological order: 50/50 coin flip.
+ *
+ * @param a - Trait from parent A.
+ * @param b - Trait from parent B.
+ * @returns One of the two values at random.
+ */
 function coin(a, b) {
     return Math.random() < 0.5 ? a : b;
 }
-// ── Ordres de dominance (du plus récessif au plus dominant) ──────────────────
+// ── Dominance orders (from most recessive to most dominant) ──────────────────
 /**
- * Teinte de peau : foncé dominant sur clair.
- * Valeurs hex réelles de SkinColor, ordonnées du plus clair au plus foncé.
+ * Skin tone: darker is dominant over lighter.
+ * Actual hex values from {@link SkinColor}, ordered from lightest to darkest.
  */
 const SKIN_DOMINANCE_ORDER = [
-    SkinColor.Porcelain, // ffdbb4 — le plus clair / récessif
+    SkinColor.Porcelain, // ffdbb4 — lightest / most recessive
     SkinColor.Light, // edb98a
     SkinColor.Warm, // fd9841
     SkinColor.Medium, // d08b5b
     SkinColor.Tan, // ae5d29
     SkinColor.Brown, // 614335
     SkinColor.DarkBrown, // 4a312c
-    SkinColor.Deep, // 2c1b18 — le plus foncé / dominant
+    SkinColor.Deep, // 2c1b18 — darkest / most dominant
 ];
 /**
- * Couleur des yeux : noir/brun dominant, bleu récessif.
- * Source : génétique réelle (HERC2/OCA2).
+ * Eye color: black/brown dominant, blue recessive.
+ * Source: real genetics (HERC2/OCA2).
  */
 const EYE_DOMINANCE_ORDER = [
-    EyeColor.LightBlue, // 6baed6 — récessif
+    EyeColor.LightBlue, // 6baed6 — most recessive
     EyeColor.Blue, // 3b6fa0
     EyeColor.Gray, // 737373
     EyeColor.Green, // 3d6b34
@@ -82,35 +118,42 @@ const EYE_DOMINANCE_ORDER = [
     EyeColor.Amber, // b07c4d
     EyeColor.Brown, // 724133
     EyeColor.DarkBrown, // 4a312c
-    EyeColor.Black, // 0a0a0a — dominant
+    EyeColor.Black, // 0a0a0a — most dominant
 ];
 /**
- * Couleur des cheveux naturels : foncé dominant.
- * Roux (Auburn/Red/Copper) = intermédiaire, mais récessif sur brun.
- * Source : MC1R pour le roux, TYRP1/OCA2 pour l'axe clair/foncé.
+ * Natural hair color: darker is dominant.
+ * Auburn/Red/Copper are intermediate — recessive over brown, dominant over blonde.
+ * Source: MC1R for red hair, TYRP1/OCA2 for the light/dark axis.
  *
- * Les couleurs fantaisie (PastelPink, HotPink, Lilac…) sont hors ordre ;
- * resolveByRank les traitera en 50/50 automatiquement.
+ * Fantasy colors (PastelPink, HotPink, Lilac…) are outside the order;
+ * {@link resolveByRank} automatically falls back to 50/50 for them.
  */
 const HAIR_DOMINANCE_ORDER = [
-    HairColor.LightBlonde, // récessif
+    HairColor.LightBlonde, // most recessive
     HairColor.GoldenBlonde,
     HairColor.HoneyBlonde,
-    HairColor.Auburn, // roux — récessif sur brun mais dominant sur blond
+    HairColor.Auburn, // red — recessive over brown, dominant over blonde
     HairColor.Red,
     HairColor.Copper,
     HairColor.LightBrown,
     HairColor.Brown,
     HairColor.DarkBrown,
     HairColor.SoftBlack,
-    HairColor.JetBlack, // dominant
-    // White/Silver/Gray = vieillissement, hors ordre génétique de base
+    HairColor.JetBlack, // most dominant
+    // White/Silver/Gray = aging, outside the base genetic order
 ];
-// ── Règles spécifiques ────────────────────────────────────────────────────────
+// ── Trait-specific inheritance rules ─────────────────────────────────────────
 /**
- * Taches de rousseur : récessif (MC1R).
- * Exprimées seulement si les deux parents sont porteurs (ou les ont).
- * P(enfant a des taches) = 75% si les deux en ont, 25% si un seul.
+ * Freckles: recessive (MC1R gene).
+ * Expressed only when both parents are carriers (or have them).
+ *
+ * - Both parents have freckles → 75% chance the child does too.
+ * - Only one parent has freckles → 25% chance.
+ * - Neither → no freckles.
+ *
+ * @param a - Whether parent A has freckles.
+ * @param b - Whether parent B has freckles.
+ * @returns Whether the child inherits freckles.
  */
 function inheritFreckles(a, b) {
     if (a && b)
@@ -120,12 +163,18 @@ function inheritFreckles(a, b) {
     return false;
 }
 /**
- * Couleur des taches : héritée du parent qui les a.
- * Si les deux en ont, on mélange via une interpolation hex simple.
+ * Freckle color: inherited from whichever parent has freckles.
+ * If both parents have freckles, the colors are blended via a simple perceptual hex average.
+ *
+ * @param aHas   - Whether parent A has freckles.
+ * @param aColor - Parent A's freckle color (hex without `#`).
+ * @param bHas   - Whether parent B has freckles.
+ * @param bColor - Parent B's freckle color (hex without `#`).
+ * @returns Resolved freckle color for the child.
  */
 function inheritFrecklesColor(aHas, aColor, bHas, bColor) {
     if (aHas && bHas) {
-        // Mélange hex perceptuel simple
+        // Simple perceptual hex blend
         const blend = (ca, cb) => {
             const ra = parseInt(ca.slice(0, 2), 16), ga = parseInt(ca.slice(2, 4), 16), ba = parseInt(ca.slice(4, 6), 16);
             const rb = parseInt(cb.slice(0, 2), 16), gb = parseInt(cb.slice(2, 4), 16), bb = parseInt(cb.slice(4, 6), 16);
@@ -140,14 +189,20 @@ function inheritFrecklesColor(aHas, aColor, bHas, bColor) {
         return aColor;
     if (bHas)
         return bColor;
-    return "c9734a"; // default
+    return "c9734a"; // default fallback
 }
 /**
- * Barbe : lié au gène SRY (chromosome Y) + polygénique.
- * - Deux parents avec barbe → 75% de chance
- * - Un seul parent avec barbe → 30% de chance (porteur potentiel)
- * - Zéro → aucune
- * La barbe est ensuite retirée si le genre de l'enfant est Female.
+ * Beard: linked to the SRY gene (Y chromosome) + polygenic factors.
+ *
+ * - Both parents have a beard → 75% chance.
+ * - Only one parent has a beard → 30% chance (potential carrier).
+ * - Neither → no beard.
+ *
+ * The beard style is stripped if the child's gender is Female.
+ *
+ * @param a - Parent A's beard style.
+ * @param b - Parent B's beard style.
+ * @returns The child's inherited beard style.
  */
 function inheritBeard(a, b) {
     const aHas = a !== Beard.None;
@@ -161,14 +216,18 @@ function inheritBeard(a, b) {
         hasBeard = false;
     if (!hasBeard)
         return Beard.None;
-    // Style de barbe hérité du parent barbu
+    // Beard style inherited from the bearded parent(s)
     const candidates = [a, b].filter(v => v !== Beard.None);
     return pick(candidates);
 }
 /**
- * Coiffure : non biologique (choix culturel), mais on contraint au pool
- * du genre de l'enfant. On tente de conserver la "texture" (ondulé, bouclé…)
- * en cherchant un équivalent dans le pool cible.
+ * Hairstyle: not biological (cultural choice), but constrained to the child's gender pool.
+ * Attempts to preserve "texture" (wavy, curly…) by finding an equivalent in the target pool.
+ *
+ * @param a           - Parent A's hairstyle.
+ * @param b           - Parent B's hairstyle.
+ * @param childGender - The child's gender (used to filter the available pool).
+ * @returns The resolved hairstyle for the child.
  */
 function inheritHairStyle(a, b, childGender) {
     const base = coin(a, b);
@@ -177,19 +236,23 @@ function inheritHairStyle(a, b, childGender) {
     const pool = childGender === Gender.Female ? HairFemale :
         childGender === Gender.Male ? HairMale :
             [...HairFemale, ...HairMale, ...HairUnisex];
-    // Si le style hérité est déjà compatible → on le garde
+    // If the inherited style is already compatible → keep it
     if (pool.includes(base))
         return base;
-    // Sinon on pioche dans le pool genre
+    // Otherwise pick from the gender pool
     return pick(pool);
 }
 /**
- * Forme de tête : ni totalement libre ni strictement dominante.
- * Ici on modélise via un biais léger : Oval et Round ont tendance à s'exprimer
- * ensemble plus souvent qu'Angular, mais c'est surtout du 50/50.
+ * Head shape: neither fully free nor strictly dominant.
+ * Modeled with a slight bias — Oval and Round co-express more often than Angular,
+ * but the base outcome is mostly 50/50.
+ *
+ * @param a - Parent A's head shape.
+ * @param b - Parent B's head shape.
+ * @returns The child's resolved head shape.
  */
 function inheritHeadShape(a, b) {
-    // Standard et Round sont "neutres", Angular est rare → léger biais si l'un est Angular
+    // Standard and Round are "neutral"; Angular is rare → slight bias when one parent is Angular
     if (a === b)
         return a;
     if (a === HeadShape.Angular || b === HeadShape.Angular) {
@@ -198,8 +261,9 @@ function inheritHeadShape(a, b) {
     return coin(a, b);
 }
 /**
- * Forme du nez : Wide tend à être dominant sur Button et Soft.
- * Strong est dominant sur Pointed. Le reste est 50/50.
+ * Nose shape dominance order.
+ * Wide tends to be dominant over Button and Soft; Strong is dominant over Pointed.
+ * Everything else resolves to 50/50.
  */
 const NOSE_DOMINANCE_ORDER = [
     Nose.Button,
@@ -245,6 +309,22 @@ const DEFAULT_PRESENTATION = {
 // ─────────────────────────────────────────────────────────────────────────────
 // CHARACTER FACTORY
 // ─────────────────────────────────────────────────────────────────────────────
+/**
+ * Fluent builder for Lorelei avatars.
+ *
+ * Manages a mutable {@link CharacterConfig} internally and exposes chainable setters,
+ * randomizers, a genetics engine ({@link CharacterFactory.projectChild}),
+ * and DiceBear render targets (SVG, PNG, file).
+ *
+ * @example
+ * ```ts
+ * const svg = new CharacterFactory()
+ *   .setGender(Gender.Female)
+ *   .setMood(Mood.Happy)
+ *   .setSkinColor(SkinColor.Warm)
+ *   .buildSvg();
+ * ```
+ */
 export class CharacterFactory {
     seed;
     gender;
@@ -253,6 +333,9 @@ export class CharacterFactory {
     hair;
     accessories;
     presentation;
+    /**
+     * @param seed - Optional deterministic seed. Defaults to a random 8-byte hex string.
+     */
     constructor(seed) {
         this.seed = seed ?? crypto.randomBytes(8).toString("hex");
         this.face = { ...DEFAULT_FACE };
@@ -260,7 +343,11 @@ export class CharacterFactory {
         this.accessories = { ...DEFAULT_ACCESSORIES };
         this.presentation = { ...DEFAULT_PRESENTATION };
     }
-    // ── Config globale ────────────────────────────────────────────────────────
+    // ── Global config ─────────────────────────────────────────────────────────
+    /**
+     * Returns a read-only snapshot of the current configuration.
+     * All sub-objects are shallow-copied so external mutations don't leak back.
+     */
     getConfig() {
         return {
             seed: this.seed,
@@ -272,6 +359,12 @@ export class CharacterFactory {
             presentation: { ...this.presentation },
         };
     }
+    /**
+     * Replaces the entire configuration with the provided one.
+     *
+     * @param config - Full character configuration to load.
+     * @returns `this` for chaining.
+     */
     fromConfig(config) {
         this.seed = config.seed;
         this.gender = config.gender;
@@ -282,6 +375,13 @@ export class CharacterFactory {
         this.presentation = { ...config.presentation };
         return this;
     }
+    /**
+     * Deep-merges a partial configuration into the current state.
+     * Only explicitly provided fields are overwritten; omitted fields are preserved.
+     *
+     * @param partial - Partial configuration patch.
+     * @returns `this` for chaining.
+     */
     fromPartialConfig(partial) {
         if (partial.seed !== undefined)
             this.seed = partial.seed;
@@ -299,13 +399,22 @@ export class CharacterFactory {
             this.presentation = deepMerge(this.presentation, partial.presentation);
         return this;
     }
-    /** Fusionne un patch partiel dans la config courante. Seuls les champs fournis sont écrasés. */
+    /**
+     * Applies a partial patch to the current config. Only provided fields are overwritten.
+     * Alias for {@link fromPartialConfig} that explicitly excludes `seed`.
+     *
+     * @param partial - Partial config patch (seed excluded).
+     * @returns `this` for chaining.
+     */
     patchConfig(partial) {
         return this.fromPartialConfig(partial);
     }
     /**
-     * Retourne un diff minimal entre cette factory et une autre.
-     * Utile pour l'animation ou le debug.
+     * Returns a minimal diff between this factory and another.
+     * Useful for animation or debugging.
+     *
+     * @param other - The factory to compare against.
+     * @returns A `DeepPartial<CharacterConfig>` containing only the differing fields.
      */
     diff(other) {
         const a = this.getConfig();
@@ -342,30 +451,86 @@ export class CharacterFactory {
             result.presentation = pd;
         return result;
     }
-    /** Applique la config d'une autre factory par-dessus la sienne. */
+    /**
+     * Applies another factory's configuration on top of this one (partial merge).
+     *
+     * @param other - Source factory to merge from.
+     * @returns `this` for chaining.
+     */
     merge(other) {
         return this.fromPartialConfig(other.getConfig());
     }
+    /**
+     * Creates an independent deep copy of this factory.
+     *
+     * @returns A new `CharacterFactory` with the same configuration.
+     */
     clone() {
         return new CharacterFactory().fromConfig(this.getConfig());
     }
     // ── Seed ──────────────────────────────────────────────────────────────────
+    /**
+     * Overrides the current seed.
+     *
+     * @param v - New seed string.
+     * @returns `this` for chaining.
+     */
     setSeed(v) { this.seed = v; return this; }
-    // ── Sérialisation ─────────────────────────────────────────────────────────
+    // ── Serialization ─────────────────────────────────────────────────────────
+    /**
+     * Serializes the current configuration to a pretty-printed JSON string.
+     *
+     * @returns JSON string representation of the config.
+     */
     toJSON() { return JSON.stringify(this.getConfig(), null, 2); }
+    /**
+     * Serializes the current configuration to a Base64-encoded JSON string.
+     *
+     * @returns Base64 string representation of the config.
+     */
     toBase64() {
         return Buffer.from(JSON.stringify(this.getConfig())).toString("base64");
     }
+    /**
+     * Restores a factory from a Base64-encoded JSON string produced by {@link toBase64}.
+     *
+     * @param b64 - Base64-encoded configuration string.
+     * @returns A new `CharacterFactory` initialized from the decoded config.
+     */
     static fromBase64(b64) {
         return new CharacterFactory().fromConfig(JSON.parse(Buffer.from(b64, "base64").toString("utf8")));
     }
     // ── FaceTraits ────────────────────────────────────────────────────────────
+    /**
+     * Returns a read-only snapshot of the current face traits.
+     *
+     * @returns Shallow copy of {@link FaceTraits}.
+     */
     getFace() { return { ...this.face }; }
+    /**
+     * Replaces all face traits at once.
+     *
+     * @param traits - Full face traits object.
+     * @returns `this` for chaining.
+     */
     setFace(traits) { this.face = { ...traits }; return this; }
+    /**
+     * Partially patches face traits. Only provided fields are overwritten.
+     *
+     * @param partial - Partial face traits patch.
+     * @returns `this` for chaining.
+     */
     patchFace(partial) {
         this.face = deepMerge(this.face, partial);
         return this;
     }
+    /**
+     * Randomizes all face traits.
+     * Respects the current gender pool for head shape, eyes, and mouth if gender is set.
+     * If a mood is active, eyes and mouth are left untouched (mood takes priority).
+     *
+     * @returns `this` for chaining.
+     */
     randomizeFace() {
         const gender = this.gender;
         if (gender) {
@@ -390,24 +555,58 @@ export class CharacterFactory {
         this.face.nose = pickEnum(Nose);
         return this;
     }
-    // Raccourcis unitaires (compatibilité)
+    // Individual face setters (compatibility shortcuts)
+    /** @param v - Head shape to apply. @returns `this` for chaining. */
     setHeadShape(v) { this.face.headShape = v; return this; }
+    /** @param v - Skin color (enum or hex). @returns `this` for chaining. */
     setSkinColor(v) { this.face.skinColor = v; return this; }
+    /** @param v - Eye style. @returns `this` for chaining. */
     setEyes(v) { this.face.eyes = v; return this; }
+    /** @param v - Iris color (enum or hex). @returns `this` for chaining. */
     setEyesColor(v) { this.face.eyesColor = v; return this; }
+    /** @param v - Eyebrow style. @returns `this` for chaining. */
     setEyebrows(v) { this.face.eyebrows = v; return this; }
+    /** @param v - Eyebrow color (enum or hex). @returns `this` for chaining. */
     setEyebrowsColor(v) { this.face.eyebrowsColor = v; return this; }
+    /** @param v - Nose shape. @returns `this` for chaining. */
     setNose(v) { this.face.nose = v; return this; }
+    /** @param v - Nose color (hex without `#`). @returns `this` for chaining. */
     setNoseColor(v) { this.face.noseColor = v; return this; }
+    /** @param v - Mouth style. @returns `this` for chaining. */
     setMouth(v) { this.face.mouth = v; return this; }
+    /** @param v - Mouth color (hex without `#`). @returns `this` for chaining. */
     setMouthColor(v) { this.face.mouthColor = v; return this; }
     // ── HairTraits ────────────────────────────────────────────────────────────
+    /**
+     * Returns a read-only snapshot of the current hair traits.
+     *
+     * @returns Shallow copy of {@link HairTraits}.
+     */
     getHair() { return { ...this.hair }; }
+    /**
+     * Replaces all hair traits at once.
+     *
+     * @param traits - Full hair traits object.
+     * @returns `this` for chaining.
+     */
     setHair(traits) { this.hair = { ...traits }; return this; }
+    /**
+     * Partially patches hair traits. Only provided fields are overwritten.
+     *
+     * @param partial - Partial hair traits patch.
+     * @returns `this` for chaining.
+     */
     patchHair(partial) {
         this.hair = deepMerge(this.hair, partial);
         return this;
     }
+    /**
+     * Randomizes all hair traits.
+     * Respects the current gender pool for hairstyle if gender is set.
+     * Freckles appear with ~30% probability.
+     *
+     * @returns `this` for chaining.
+     */
     randomizeHair() {
         if (this.gender) {
             this.hair.hair = pick(GENDER_POOLS[this.gender].hair);
@@ -420,47 +619,121 @@ export class CharacterFactory {
         this.hair.freckles = Math.random() > 0.7;
         return this;
     }
+    /** @param v - Hairstyle. @returns `this` for chaining. */
     setHairStyle(v) { this.hair.hair = v; return this; }
+    /** @param v - Hair color (enum or hex). @returns `this` for chaining. */
     setHairColor(v) { this.hair.hairColor = v; return this; }
+    /** @param v - Beard style. @returns `this` for chaining. */
     setBeard(v) { this.hair.beard = v; return this; }
+    /** @param v - Whether the character has freckles. @returns `this` for chaining. */
     setFreckles(v) { this.hair.freckles = v; return this; }
+    /** @param v - Freckle color (hex without `#`). @returns `this` for chaining. */
     setFrecklesColor(v) { this.hair.frecklesColor = v; return this; }
     // ── AccessoryTraits ───────────────────────────────────────────────────────
+    /**
+     * Returns a read-only snapshot of the current accessory traits.
+     *
+     * @returns Shallow copy of {@link AccessoryTraits}.
+     */
     getAccessories() { return { ...this.accessories }; }
+    /**
+     * Replaces all accessory traits at once.
+     *
+     * @param traits - Full accessory traits object.
+     * @returns `this` for chaining.
+     */
     setAccessories(traits) { this.accessories = { ...traits }; return this; }
+    /**
+     * Partially patches accessory traits. Only provided fields are overwritten.
+     *
+     * @param partial - Partial accessory traits patch.
+     * @returns `this` for chaining.
+     */
     patchAccessories(partial) {
         this.accessories = deepMerge(this.accessories, partial);
         return this;
     }
+    /**
+     * Randomizes all accessory traits (glasses, earrings, hair accessory).
+     *
+     * @returns `this` for chaining.
+     */
     randomizeAccessories() {
         this.accessories.glasses = pickEnum(Glasses);
         this.accessories.earrings = pickEnum(Earrings);
         this.accessories.hairAccessory = pickEnum(HairAccessory);
         return this;
     }
+    /**
+     * Resets all accessories to their defaults (none).
+     *
+     * @returns `this` for chaining.
+     */
     clearAccessories() { this.accessories = { ...DEFAULT_ACCESSORIES }; return this; }
+    /** @param v - Glasses style. @returns `this` for chaining. */
     setGlasses(v) { this.accessories.glasses = v; return this; }
+    /** @param v - Glasses frame color (hex without `#`). @returns `this` for chaining. */
     setGlassesColor(v) { this.accessories.glassesColor = v; return this; }
+    /** @param v - Earring style. @returns `this` for chaining. */
     setEarrings(v) { this.accessories.earrings = v; return this; }
+    /** @param v - Earring color (hex without `#`). @returns `this` for chaining. */
     setEarringsColor(v) { this.accessories.earringsColor = v; return this; }
+    /** @param v - Hair accessory. @returns `this` for chaining. */
     setHairAccessory(v) { this.accessories.hairAccessory = v; return this; }
+    /** @param v - Hair accessory color (hex without `#`). @returns `this` for chaining. */
     setHairAccessoryColor(v) { this.accessories.hairAccessoryColor = v; return this; }
     // ── Presentation ──────────────────────────────────────────────────────────
+    /**
+     * Returns a read-only snapshot of the current presentation settings.
+     *
+     * @returns Shallow copy of {@link Presentation}.
+     */
     getPresentation() { return { ...this.presentation }; }
+    /**
+     * Replaces all presentation settings at once.
+     *
+     * @param p - Full presentation object.
+     * @returns `this` for chaining.
+     */
     setPresentation(p) { this.presentation = { ...p }; return this; }
+    /**
+     * Partially patches presentation settings. Only provided fields are overwritten.
+     *
+     * @param partial - Partial presentation patch.
+     * @returns `this` for chaining.
+     */
     patchPresentation(partial) {
         this.presentation = deepMerge(this.presentation, partial);
         return this;
     }
+    /**
+     * Randomizes the background color.
+     *
+     * @returns `this` for chaining.
+     */
     randomizePresentation() {
         this.presentation.backgroundColor = pickEnum(BackgroundColor);
         return this;
     }
+    /**
+     * Sets the background color.
+     *
+     * @param v - Background color (enum value, hex string, or `"transparent"`).
+     * @returns `this` for chaining.
+     */
     setBackgroundColor(v) {
         this.presentation.backgroundColor = v;
         return this;
     }
-    // ── Genre & Mood ──────────────────────────────────────────────────────────
+    // ── Gender & Mood ─────────────────────────────────────────────────────────
+    /**
+     * Sets the character's gender and updates head shape, hairstyle, eyes, and mouth
+     * from the corresponding gender pool.
+     * Eyes and mouth are only updated if no mood is currently active.
+     *
+     * @param gender - Target gender.
+     * @returns `this` for chaining.
+     */
     setGender(gender) {
         const pool = GENDER_POOLS[gender];
         this.gender = gender;
@@ -472,12 +745,26 @@ export class CharacterFactory {
         }
         return this;
     }
+    /**
+     * Sets gender-related visual traits explicitly without randomizing from a pool.
+     *
+     * @param head   - Explicit head shape.
+     * @param hair   - Explicit hairstyle.
+     * @param gender - Optional gender tag (does not trigger pool randomization).
+     * @returns `this` for chaining.
+     */
     setPreciseGender(head, hair, gender) {
         this.gender = gender;
         this.face.headShape = head;
         this.hair.hair = hair;
         return this;
     }
+    /**
+     * Applies a mood, updating eyes, eyebrows, and mouth from the mood pool.
+     *
+     * @param mood - Target mood.
+     * @returns `this` for chaining.
+     */
     setMood(mood) {
         const pool = MOOD_POOLS[mood];
         this.mood = mood;
@@ -486,6 +773,14 @@ export class CharacterFactory {
         this.face.mouth = pick(pool.mouth);
         return this;
     }
+    /**
+     * Sets eyes, eyebrows, and mouth explicitly, clearing any active mood tag.
+     *
+     * @param eyes     - Explicit eye style.
+     * @param eyebrows - Explicit eyebrow style.
+     * @param mouth    - Explicit mouth style.
+     * @returns `this` for chaining.
+     */
     setPreciseMood(eyes, eyebrows, mouth) {
         this.mood = undefined;
         this.face.eyes = eyes;
@@ -493,49 +788,67 @@ export class CharacterFactory {
         this.face.mouth = mouth;
         return this;
     }
-    // ── Randomize global ──────────────────────────────────────────────────────
+    // ── Global randomize ──────────────────────────────────────────────────────
+    /**
+     * Fully randomizes all traits (face, hair, accessories, presentation, mood).
+     * Mood is applied last so it correctly overrides eyes/eyebrows/mouth.
+     *
+     * @returns `this` for chaining.
+     */
     randomize() {
         this.randomizeFace();
         this.randomizeHair();
         this.randomizeAccessories();
         this.randomizePresentation();
-        this.setMood(pickEnum(Mood)); // mood en dernier : écrase eyes/eyebrows/mouth
+        this.setMood(pickEnum(Mood)); // mood last: overwrites eyes/eyebrows/mouth
         return this;
     }
+    /**
+     * Randomizes only appearance traits (face, hair, accessories) without touching mood or presentation.
+     *
+     * @returns `this` for chaining.
+     */
     randomizeAppearance() {
         this.randomizeFace();
         this.randomizeHair();
         this.randomizeAccessories();
         return this;
     }
+    /**
+     * Picks a new random mood and applies it.
+     *
+     * @returns `this` for chaining.
+     */
     randomizeMood() { this.setMood(pickEnum(Mood)); return this; }
     // ─────────────────────────────────────────────────────────────────────────
     // GENETICS — projectChild
     // ─────────────────────────────────────────────────────────────────────────
     /**
-     * Simule la transmission génétique entre `this` (parent A) et `partner` (parent B).
+     * Simulates genetic inheritance between `this` (parent A) and `partner` (parent B),
+     * returning a new factory representing their child.
      *
-     * Traits biologiques avec dominance/récessivité réelle :
-     *   - Teint           : foncé dominant sur clair (SKIN_DOMINANCE_ORDER)
-     *   - Couleur des yeux: noir/brun > vert/noisette > gris/bleu (EYE_DOMINANCE_ORDER)
-     *   - Couleur cheveux : noir > brun > roux > blond (HAIR_DOMINANCE_ORDER)
-     *     → les couleurs fantaisie (PastelPink, Lilac…) sont hors ordre → 50/50
-     *   - Taches de rousseur : récessif MC1R (75 % si les deux, 25 % si un seul)
-     *   - Barbe           : lié à SRY, retirée si enfant féminin
+     * **Biological traits with real dominance/recessiveness:**
+     * - Skin tone        : darker dominant over lighter (`SKIN_DOMINANCE_ORDER`)
+     * - Eye color        : black/brown > green/hazel > gray/blue (`EYE_DOMINANCE_ORDER`)
+     * - Hair color       : black > brown > red/auburn > blonde (`HAIR_DOMINANCE_ORDER`)
+     *   → fantasy colors (PastelPink, Lilac…) are outside the order → 50/50
+     * - Freckles         : recessive MC1R (75% if both parents have them, 25% if one)
+     * - Beard            : SRY-linked, removed if child is Female
      *
-     * Traits morphologiques (50/50 avec légère modélisation) :
-     *   - Forme de tête   : Angular légèrement récessif
-     *   - Nez             : Wide/Strong légèrement dominants
-     *   - Yeux/bouche/sourcils : 50/50 (non biologiques au sens couleur)
+     * **Morphological traits (50/50 with light modeling):**
+     * - Head shape       : Angular slightly recessive
+     * - Nose             : Wide/Strong slightly dominant
+     * - Eyes/mouth/eyebrows: 50/50 (not pigmentation-genetic)
      *
-     * Traits non biologiques :
-     *   - Coiffure        : contrainte au pool du genre de l'enfant
-     *   - Accessoires     : remis aux defaults (non héritables)
-     *   - Mood            : regénéré aléatoirement (ou forcé via options)
-     *   - Seed            : nouveau par défaut (ou forcé)
+     * **Non-biological traits:**
+     * - Hairstyle        : constrained to the child's gender pool
+     * - Accessories      : reset to defaults (not inheritable)
+     * - Mood             : re-randomized (or forced via options)
+     * - Seed             : new by default (or forced)
      *
-     * @param partner   Config du second parent
-     * @param options   Forcer le genre, le mood ou la seed de l'enfant
+     * @param partner - The second parent's configuration.
+     * @param options - Optionally force the child's gender, mood, or seed.
+     * @returns A new `CharacterFactory` representing the child.
      */
     projectChild(partner, options = {}) {
         const A = this.getConfig();
@@ -550,7 +863,7 @@ export class CharacterFactory {
             eyes: coin(A.face.eyes, B.face.eyes),
             eyesColor: resolveByRank(A.face.eyesColor, B.face.eyesColor, EYE_DOMINANCE_ORDER),
             eyebrows: coin(A.face.eyebrows, B.face.eyebrows),
-            // Sourcils : couleur suit la dominance capillaire (même gènes pigmentaires)
+            // Eyebrows: color follows hair dominance (same pigmentation genes)
             eyebrowsColor: resolveByRank(A.face.eyebrowsColor, B.face.eyebrowsColor, HAIR_DOMINANCE_ORDER),
             nose: resolveByRank(A.face.nose, B.face.nose, NOSE_DOMINANCE_ORDER),
             noseColor: coin(A.face.noseColor, B.face.noseColor),
@@ -567,13 +880,13 @@ export class CharacterFactory {
             freckles: childFreckles,
             frecklesColor: childFrecklePigment,
         };
-        // ── Accessoires : non biologiques ─────────────────────────────────────
+        // ── Accessories: non-biological, reset to defaults ────────────────────
         const childAccessories = { ...DEFAULT_ACCESSORIES };
-        // ── Présentation : héritage 50/50 ─────────────────────────────────────
+        // ── Presentation: 50/50 inheritance ───────────────────────────────────
         const childPresentation = {
             backgroundColor: coin(A.presentation.backgroundColor, B.presentation.backgroundColor),
         };
-        // ── Assemblage ────────────────────────────────────────────────────────
+        // ── Assembly ──────────────────────────────────────────────────────────
         const child = new CharacterFactory(childSeed).fromConfig({
             seed: childSeed,
             gender: childGender,
@@ -583,20 +896,24 @@ export class CharacterFactory {
             accessories: childAccessories,
             presentation: childPresentation,
         });
-        // Ajustement genre sur la tête (pool genre si pas déjà compatible)
+        // Gender head adjustment (re-pick from gender pool if inherited shape is incompatible)
         if (childGender) {
             const headPool = GENDER_POOLS[childGender].head;
             if (!headPool.includes(childFace.headShape)) {
                 child.patchFace({ headShape: pick(headPool) });
             }
         }
-        // Mood (aléatoire ou forcé)
+        // Mood (random or forced)
         child.setMood(options.mood ?? pickEnum(Mood));
         return child;
     }
     // ─────────────────────────────────────────────────────────────────────────
     // BUILD DICEBEAR
     // ─────────────────────────────────────────────────────────────────────────
+    /**
+     * Maps the current config to a DiceBear options object.
+     * Each trait is wrapped in an array; optional features use 100/0 probability flags.
+     */
     toDiceBearOptions() {
         const f = this.face;
         const h = this.hair;
@@ -633,9 +950,22 @@ export class CharacterFactory {
             backgroundColor: [p.backgroundColor],
         };
     }
+    /**
+     * Renders the character as an SVG string.
+     *
+     * @returns SVG markup string.
+     */
     buildSvg() {
         return createAvatar(lorelei, this.toDiceBearOptions()).toString();
     }
+    /**
+     * Renders the character as a PNG buffer.
+     * Requires `sharp` to be installed (`npm install sharp`).
+     *
+     * @param size - Output image size in pixels (square). Defaults to `256`.
+     * @returns PNG buffer.
+     * @throws If `sharp` is not installed.
+     */
     async buildPng(size = 256) {
         try {
             const sharp = (await import("sharp")).default;
@@ -645,19 +975,56 @@ export class CharacterFactory {
             throw new Error("Sharp is required to build PNG. Please install it with `npm install sharp` or with your favorite package installer.");
         }
     }
+    /**
+     * Renders and saves the character as an SVG file.
+     * Parent directories are created automatically.
+     *
+     * @param filePath - Absolute or relative path to the output `.svg` file.
+     */
     async saveSvg(filePath) {
         fs.mkdirSync(path.dirname(filePath), { recursive: true });
         fs.writeFileSync(filePath, this.buildSvg(), "utf8");
     }
+    /**
+     * Renders and saves the character as a PNG file.
+     * Parent directories are created automatically.
+     * Requires `sharp` to be installed.
+     *
+     * @param filePath - Absolute or relative path to the output `.png` file.
+     * @param size     - Output image size in pixels (square). Defaults to `256`.
+     */
     async savePng(filePath, size = 256) {
         fs.mkdirSync(path.dirname(filePath), { recursive: true });
         fs.writeFileSync(filePath, await this.buildPng(size));
     }
+    /**
+     * Serializes and saves the current configuration as a JSON file.
+     * Parent directories are created automatically.
+     *
+     * @param filePath - Absolute or relative path to the output `.json` file.
+     */
     saveConfig(filePath) {
         fs.mkdirSync(path.dirname(filePath), { recursive: true });
         fs.writeFileSync(filePath, this.toJSON(), "utf8");
     }
 }
+/**
+ * Generates a batch of character PNG files from a base factory.
+ *
+ * Each character receives a unique seed derived from the base seed and its padded index.
+ * A `metadata.json` file listing all generated entries is written to `outputDir`.
+ *
+ * @param factory    - Base factory used as the starting point for each character.
+ * @param options    - Batch configuration:
+ *   - `count`        : Number of characters to generate.
+ *   - `outputDir`    : Directory where files are saved (created if missing).
+ *   - `size`         : PNG size in pixels. Defaults to `256`.
+ *   - `prefix`       : Filename prefix. Defaults to `"character"`.
+ *   - `randomize`    : If `true`, each clone is fully randomized. Defaults to `false`.
+ *   - `saveConfigs`  : If `true`, also saves a `.json` config file per character. Defaults to `false`.
+ * @param onProgress - Optional callback invoked after each character is saved `(current, total)`.
+ * @returns Array of {@link BatchResult} entries, one per generated character.
+ */
 export async function batchFactory(factory, options, onProgress) {
     const { count, outputDir, size = 256, prefix = "character", randomize = false, saveConfigs = false, } = options;
     fs.mkdirSync(outputDir, { recursive: true });
