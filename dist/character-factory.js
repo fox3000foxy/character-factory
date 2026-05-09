@@ -3,9 +3,9 @@ import { createAvatar } from "@dicebear/core";
 import * as crypto from "node:crypto";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { BackgroundColor, Beard, Earrings, Eyebrows, EyeColor, Eyes, Glasses, Hair, HairAccessory, HairColor, HairFemale, HairMale, HairUnisex, HeadShape, Mouth, Nose, SkinColor, } from "./lorelei-traits";
 import { Gender, GENDER_POOLS } from "./lorelei-gender";
 import { Mood, MOOD_POOLS } from "./lorelei-mood";
+import { BackgroundColor, Beard, Earrings, Eyebrows, EyeColor, Eyes, Glasses, Hair, HairAccessory, HairColor, HairFemale, HairMale, HairUnisex, HeadShape, Mouth, Nose, SkinColor, } from "./lorelei-traits";
 /**
  * Returns a uniformly random element from an array.
  *

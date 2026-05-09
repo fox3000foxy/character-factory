@@ -1,12 +1,15 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // LORELEI GENDER SYSTEM
 // ─────────────────────────────────────────────────────────────────────────────
-import { Eyes, Mouth, HeadShape, HairMale, HairFemale } from "./lorelei-traits";
+import { Eyes, HairFemale, HairMale, HeadShape, Mouth } from "./lorelei-traits";
 /** Character gender, influencing head shape, hairstyle, eye, and mouth pools. */
 export var Gender;
 (function (Gender) {
+    /** Female gender presentation. */
     Gender["Female"] = "FEMALE";
+    /** Male gender presentation. */
     Gender["Male"] = "MALE";
+    /** Neutral or non-binary gender presentation. */
     Gender["Neutral"] = "NEUTRAL";
 })(Gender || (Gender = {}));
 /**

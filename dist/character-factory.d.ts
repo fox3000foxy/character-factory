@@ -1,6 +1,6 @@
-import { BackgroundColor, Beard, Earrings, Eyebrows, EyeColor, Eyes, Glasses, Hair, HairAccessory, HairColor, HeadShape, Mouth, Nose, SkinColor } from "./lorelei-traits";
 import { Gender } from "./lorelei-gender";
 import { Mood } from "./lorelei-mood";
+import { BackgroundColor, Beard, Earrings, Eyebrows, EyeColor, Eyes, Glasses, Hair, HairAccessory, HairColor, HeadShape, Mouth, Nose, SkinColor } from "./lorelei-traits";
 /** Recursively makes every property of `T` optional. */
 type DeepPartial<T> = {
     [K in keyof T]?: T[K] extends object ? DeepPartial<T[K]> : T[K];

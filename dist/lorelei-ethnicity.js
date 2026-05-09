@@ -11,21 +11,29 @@
 // Picking happens in two steps:
 //   1. pickEthnicity(country)  → selects an ethnicity according to country weights
 //   2. pickFromEthnicity(eth)  → draws coherent skin + hairColor + hairCut
-import { SkinColor, HairColor, Hair, } from "./lorelei-traits";
 import { Gender } from "./lorelei-gender";
+import { Hair, HairColor, SkinColor, } from "./lorelei-traits";
 /**
  * Ethnic background categories used to drive coherent physical trait generation.
  * These are probabilistic abstractions, not strict biological classifications.
  */
 export var Ethnicity;
 (function (Ethnicity) {
+    /** Scandinavia, Netherlands, Northern UK. */
     Ethnicity["NorthEuropean"] = "NORTH_EUROPEAN";
+    /** France, Germany, UK general. */
     Ethnicity["WestEuropean"] = "WEST_EUROPEAN";
+    /** Mediterranean (future extensions). */
     Ethnicity["SouthEuropean"] = "SOUTH_EUROPEAN";
+    /** Japan, China, Korea. */
     Ethnicity["EastAsian"] = "EAST_ASIAN";
+    /** India, Pakistan, Bangladesh. */
     Ethnicity["SouthAsian"] = "SOUTH_ASIAN";
+    /** Brazil, Mexico, Latin America. */
     Ethnicity["Latino"] = "LATINO";
+    /** Sub-Saharan Africa & diaspora. */
     Ethnicity["BlackAfrican"] = "BLACK_AFRICAN";
+    /** Catch-all for highly diverse countries. */
     Ethnicity["Mixed"] = "MIXED";
 })(Ethnicity || (Ethnicity = {}));
 /**
@@ -549,18 +557,31 @@ export const ETHNICITY_PROFILES = {
 /** Countries supported for ethnicity-weighted character generation. */
 export var Country;
 (function (Country) {
+    /** United States of America. */
     Country["USA"] = "USA";
+    /** Canada. */
     Country["Canada"] = "Canada";
+    /** United Kingdom. */
     Country["UK"] = "UK";
+    /** Australia. */
     Country["Australia"] = "Australia";
+    /** Germany. */
     Country["Germany"] = "Germany";
+    /** France. */
     Country["France"] = "France";
+    /** Japan. */
     Country["Japan"] = "Japan";
+    /** China. */
     Country["China"] = "China";
+    /** India. */
     Country["India"] = "India";
+    /** Brazil. */
     Country["Brazil"] = "Brazil";
+    /** Sweden. */
     Country["Sweden"] = "Sweden";
+    /** Netherlands. */
     Country["Netherlands"] = "Netherlands";
+    /** Denmark. */
     Country["Denmark"] = "Denmark";
 })(Country || (Country = {}));
 /**

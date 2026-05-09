@@ -1,8 +1,11 @@
-import { Eyes, Mouth, HeadShape, type Hair } from "./lorelei-traits";
+import { Eyes, HeadShape, Mouth, type Hair } from "./lorelei-traits";
 /** Character gender, influencing head shape, hairstyle, eye, and mouth pools. */
 export declare enum Gender {
+    /** Female gender presentation. */
     Female = "FEMALE",
+    /** Male gender presentation. */
     Male = "MALE",
+    /** Neutral or non-binary gender presentation. */
     Neutral = "NEUTRAL"
 }
 /** Pools of feature variants associated with a given gender. */

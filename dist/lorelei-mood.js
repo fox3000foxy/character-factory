@@ -1,23 +1,37 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // LORELEI MOOD SYSTEM
 // ─────────────────────────────────────────────────────────────────────────────
-import { Eyes, Eyebrows, Mouth } from "./lorelei-traits";
+import { Eyebrows, Eyes, Mouth } from "./lorelei-traits";
 /** Emotional moods that drive the selection of eyes, eyebrows, and mouth. */
 export var Mood;
 (function (Mood) {
+    /** Happy mood: cheerful and joyful expression. */
     Mood["Happy"] = "HAPPY";
+    /** Excited mood: energetic and enthusiastic expression. */
     Mood["Excited"] = "EXCITED";
+    /** Loving mood: affectionate and tender expression. */
     Mood["Loving"] = "LOVING";
+    /** Playful mood: mischievous and fun expression. */
     Mood["Playful"] = "PLAYFUL";
+    /** Proud mood: confident and satisfied expression. */
     Mood["Proud"] = "PROUD";
+    /** Neutral mood: calm and composed expression. */
     Mood["Neutral"] = "NEUTRAL";
+    /** Sleepy mood: drowsy and tired expression. */
     Mood["Sleepy"] = "SLEEPY";
+    /** Bored mood: disinterested and indifferent expression. */
     Mood["Bored"] = "BORED";
+    /** Confused mood: puzzled and perplexed expression. */
     Mood["Confused"] = "CONFUSED";
+    /** Sad mood: sorrowful and downcast expression. */
     Mood["Sad"] = "SAD";
+    /** Angry mood: irritated and hostile expression. */
     Mood["Angry"] = "ANGRY";
+    /** Scared mood: fearful and anxious expression. */
     Mood["Scared"] = "SCARED";
+    /** Surprised mood: shocked and astonished expression. */
     Mood["Surprised"] = "SURPRISED";
+    /** Silly mood: goofy and humorous expression. */
     Mood["Silly"] = "SILLY";
 })(Mood || (Mood = {}));
 /**
