@@ -3,6 +3,7 @@ import { createAvatar } from "@dicebear/core";
 import * as crypto from "node:crypto";
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { pickEthnicity, pickHairColor, pickHaircut, pickHasBeard, pickSkinColor, } from "./lorelei-ethnicity";
 import { Gender, GENDER_POOLS } from "./lorelei-gender";
 import { Mood, MOOD_POOLS } from "./lorelei-mood";
 import { BackgroundColor, Beard, Earrings, Eyebrows, EyeColor, Eyes, Glasses, Hair, HairAccessory, HairColor, HairFemale, HairMale, HairUnisex, HeadShape, Mouth, Nose, SkinColor, } from "./lorelei-traits";
@@ -11,8 +12,11 @@ import { BackgroundColor, Beard, Earrings, Eyebrows, EyeColor, Eyes, Glasses, Ha
  *
  * @param arr - Non-empty source array.
  * @returns A randomly selected element.
+ * @throws {RangeError} If `arr` is empty.
  */
 export function pick(arr) {
+    if (arr.length === 0)
+        throw new RangeError("pick() called on empty array");
     return arr[Math.floor(Math.random() * arr.length)];
 }
 /**
@@ -36,13 +40,20 @@ function deepMerge(target, source) {
     const result = { ...target };
     for (const key of Object.keys(source)) {
         const srcVal = source[key];
-        if (srcVal !== undefined) {
-            if (typeof srcVal === "object" && !Array.isArray(srcVal) && srcVal !== null) {
-                result[key] = deepMerge(result[key], srcVal);
-            }
-            else {
-                result[key] = srcVal;
-            }
+        if (srcVal === undefined)
+            continue;
+        const tgtVal = result[key];
+        const isPlainObj = typeof srcVal === "object" &&
+            srcVal !== null &&
+            !Array.isArray(srcVal) &&
+            typeof tgtVal === "object" &&
+            tgtVal !== null &&
+            !Array.isArray(tgtVal);
+        if (isPlainObj) {
+            result[key] = deepMerge(tgtVal, srcVal);
+        }
+        else {
+            result[key] = srcVal;
         }
     }
     return result;
@@ -500,6 +511,24 @@ export class CharacterFactory {
     static fromBase64(b64) {
         return new CharacterFactory().fromConfig(JSON.parse(Buffer.from(b64, "base64").toString("utf8")));
     }
+    /**
+     * Restores a factory from a JSON string produced by {@link toJSON}.
+     *
+     * @param json - JSON string representation of the config.
+     * @returns A new `CharacterFactory` initialized from the parsed config.
+     */
+    static fromJSON(json) {
+        return new CharacterFactory().fromConfig(JSON.parse(json));
+    }
+    /**
+     * Loads a factory from a JSON file on disk produced by {@link saveConfig}.
+     *
+     * @param filePath - Path to the JSON file.
+     * @returns A new `CharacterFactory` initialized from the file contents.
+     */
+    static fromFile(filePath) {
+        return CharacterFactory.fromJSON(fs.readFileSync(filePath, "utf8"));
+    }
     // ── FaceTraits ────────────────────────────────────────────────────────────
     /**
      * Returns a read-only snapshot of the current face traits.
@@ -788,6 +817,37 @@ export class CharacterFactory {
         this.face.mouth = mouth;
         return this;
     }
+    // ── Ethnicity / Country ───────────────────────────────────────────────────
+    /**
+     * Applies a coherent skin/hair/hairstyle/beard set from the given ethnicity.
+     * Requires a gender to be set (used to pick the hairstyle sub-pool); falls back
+     * to a coin-flip gender if none is set, and stores it.
+     *
+     * @param ethnicity - Target ethnicity.
+     * @returns `this` for chaining.
+     */
+    setEthnicity(ethnicity) {
+        const gender = this.gender ?? (Math.random() < 0.5 ? Gender.Male : Gender.Female);
+        this.gender = gender;
+        this.face.skinColor = pickSkinColor(ethnicity);
+        this.hair.hairColor = pickHairColor(ethnicity);
+        this.face.eyebrowsColor = this.hair.hairColor;
+        this.hair.hair = pickHaircut(ethnicity, gender);
+        this.hair.beard = gender === Gender.Female || !pickHasBeard(ethnicity)
+            ? Beard.None
+            : pickEnum(Beard);
+        return this;
+    }
+    /**
+     * Picks a random ethnicity weighted by the given country's demographics,
+     * then applies it via {@link setEthnicity}.
+     *
+     * @param country - Target country.
+     * @returns `this` for chaining.
+     */
+    setCountry(country) {
+        return this.setEthnicity(pickEthnicity(country));
+    }
     // ── Global randomize ──────────────────────────────────────────────────────
     /**
      * Fully randomizes all traits (face, hair, accessories, presentation, mood).
@@ -820,6 +880,34 @@ export class CharacterFactory {
      * @returns `this` for chaining.
      */
     randomizeMood() { this.setMood(pickEnum(Mood)); return this; }
+    /**
+     * Fully randomizes the character with traits coherent to the given country.
+     * Picks a weighted ethnicity, applies coherent skin/hair/hairstyle/beard,
+     * then randomizes the remaining traits (eyes, eyebrows, nose, mouth,
+     * accessories, presentation, mood).
+     *
+     * @param country - Target country.
+     * @param gender  - Optional forced gender (otherwise 50/50).
+     * @returns `this` for chaining.
+     */
+    randomizeFromCountry(country, gender) {
+        this.gender = gender ?? (Math.random() < 0.5 ? Gender.Male : Gender.Female);
+        const ethnicity = pickEthnicity(country);
+        this.setEthnicity(ethnicity);
+        // Face — eyes/eyebrows/nose randomized; skin already set by setEthnicity.
+        const gPool = GENDER_POOLS[this.gender];
+        this.face.headShape = pick(gPool.head);
+        this.face.eyes = pickEnum(Eyes);
+        this.face.eyesColor = pickEnum(EyeColor);
+        this.face.eyebrows = pickEnum(Eyebrows);
+        this.face.nose = pickEnum(Nose);
+        // Accessories + presentation
+        this.randomizeAccessories();
+        this.randomizePresentation();
+        // Mood last (overrides eyes/eyebrows/mouth)
+        this.setMood(pickEnum(Mood));
+        return this;
+    }
     // ─────────────────────────────────────────────────────────────────────────
     // GENETICS — projectChild
     // ─────────────────────────────────────────────────────────────────────────
@@ -967,13 +1055,15 @@ export class CharacterFactory {
      * @throws If `sharp` is not installed.
      */
     async buildPng(size = 256) {
+        let sharp;
         try {
-            const sharp = (await import("sharp")).default;
-            return sharp(Buffer.from(this.buildSvg())).resize(size, size).png().toBuffer();
+            sharp = (await import("sharp")).default;
         }
-        catch (_e) {
-            throw new Error("Sharp is required to build PNG. Please install it with `npm install sharp` or with your favorite package installer.");
+        catch (e) {
+            throw new Error("Sharp is required to build PNG. Install it with `npm install sharp`. " +
+                `Underlying error: ${e?.message ?? String(e)}`);
         }
+        return sharp(Buffer.from(this.buildSvg())).resize(size, size).png().toBuffer();
     }
     /**
      * Renders and saves the character as an SVG file.
@@ -1026,24 +1116,34 @@ export class CharacterFactory {
  * @returns Array of {@link BatchResult} entries, one per generated character.
  */
 export async function batchFactory(factory, options, onProgress) {
-    const { count, outputDir, size = 256, prefix = "character", randomize = false, saveConfigs = false, } = options;
+    const { count, outputDir, size = 256, prefix = "character", randomize = false, saveConfigs = false, concurrency = 4, } = options;
     fs.mkdirSync(outputDir, { recursive: true });
-    const results = [];
     const baseConfig = factory.getConfig();
     const pad = String(count).length;
-    for (let i = 0; i < count; i++) {
-        const idx = i + 1;
-        const padded = String(idx).padStart(pad, "0");
-        const clone = factory.clone().setSeed(`${baseConfig.seed}-${padded}`);
-        if (randomize)
-            clone.randomize();
-        const filePath = path.join(outputDir, `${prefix}-${padded}.png`);
-        await clone.savePng(filePath, size);
-        if (saveConfigs)
-            clone.saveConfig(path.join(outputDir, `${prefix}-${padded}.json`));
-        results.push({ index: idx, filePath, config: clone.getConfig() });
-        onProgress?.(idx, count);
-    }
+    const results = new Array(count);
+    let done = 0;
+    let nextIndex = 0;
+    const worker = async () => {
+        while (true) {
+            const i = nextIndex++;
+            if (i >= count)
+                return;
+            const idx = i + 1;
+            const padded = String(idx).padStart(pad, "0");
+            const clone = factory.clone().setSeed(`${baseConfig.seed}-${padded}`);
+            if (randomize)
+                clone.randomize();
+            const filePath = path.join(outputDir, `${prefix}-${padded}.png`);
+            await clone.savePng(filePath, size);
+            if (saveConfigs)
+                clone.saveConfig(path.join(outputDir, `${prefix}-${padded}.json`));
+            results[i] = { index: idx, filePath, config: clone.getConfig() };
+            done++;
+            onProgress?.(done, count);
+        }
+    };
+    const workers = Array.from({ length: Math.max(1, Math.min(concurrency, count)) }, () => worker());
+    await Promise.all(workers);
     fs.writeFileSync(path.join(outputDir, "metadata.json"), JSON.stringify(results.map(r => ({ index: r.index, file: path.basename(r.filePath), ...r.config })), null, 2), "utf8");
     return results;
 }

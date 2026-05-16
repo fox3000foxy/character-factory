@@ -1,3 +1,4 @@
+import { type Country, type Ethnicity } from "./lorelei-ethnicity";
 import { Gender } from "./lorelei-gender";
 import { Mood } from "./lorelei-mood";
 import { BackgroundColor, Beard, Earrings, Eyebrows, EyeColor, Eyes, Glasses, Hair, HairAccessory, HairColor, HeadShape, Mouth, Nose, SkinColor } from "./lorelei-traits";
@@ -10,8 +11,9 @@ type DeepPartial<T> = {
  *
  * @param arr - Non-empty source array.
  * @returns A randomly selected element.
+ * @throws {RangeError} If `arr` is empty.
  */
-export declare function pick<T>(arr: T[]): T;
+export declare function pick<T>(arr: readonly T[]): T;
 /**
  * Returns a uniformly random value from a TypeScript enum.
  *
@@ -210,6 +212,20 @@ export declare class CharacterFactory {
      */
     static fromBase64(b64: string): CharacterFactory;
     /**
+     * Restores a factory from a JSON string produced by {@link toJSON}.
+     *
+     * @param json - JSON string representation of the config.
+     * @returns A new `CharacterFactory` initialized from the parsed config.
+     */
+    static fromJSON(json: string): CharacterFactory;
+    /**
+     * Loads a factory from a JSON file on disk produced by {@link saveConfig}.
+     *
+     * @param filePath - Path to the JSON file.
+     * @returns A new `CharacterFactory` initialized from the file contents.
+     */
+    static fromFile(filePath: string): CharacterFactory;
+    /**
      * Returns a read-only snapshot of the current face traits.
      *
      * @returns Shallow copy of {@link FaceTraits}.
@@ -407,6 +423,23 @@ export declare class CharacterFactory {
      */
     setPreciseMood(eyes: Eyes, eyebrows: Eyebrows, mouth: Mouth): this;
     /**
+     * Applies a coherent skin/hair/hairstyle/beard set from the given ethnicity.
+     * Requires a gender to be set (used to pick the hairstyle sub-pool); falls back
+     * to a coin-flip gender if none is set, and stores it.
+     *
+     * @param ethnicity - Target ethnicity.
+     * @returns `this` for chaining.
+     */
+    setEthnicity(ethnicity: Ethnicity): this;
+    /**
+     * Picks a random ethnicity weighted by the given country's demographics,
+     * then applies it via {@link setEthnicity}.
+     *
+     * @param country - Target country.
+     * @returns `this` for chaining.
+     */
+    setCountry(country: Country): this;
+    /**
      * Fully randomizes all traits (face, hair, accessories, presentation, mood).
      * Mood is applied last so it correctly overrides eyes/eyebrows/mouth.
      *
@@ -425,6 +458,17 @@ export declare class CharacterFactory {
      * @returns `this` for chaining.
      */
     randomizeMood(): this;
+    /**
+     * Fully randomizes the character with traits coherent to the given country.
+     * Picks a weighted ethnicity, applies coherent skin/hair/hairstyle/beard,
+     * then randomizes the remaining traits (eyes, eyebrows, nose, mouth,
+     * accessories, presentation, mood).
+     *
+     * @param country - Target country.
+     * @param gender  - Optional forced gender (otherwise 50/50).
+     * @returns `this` for chaining.
+     */
+    randomizeFromCountry(country: Country, gender?: Gender): this;
     /**
      * Simulates genetic inheritance between `this` (parent A) and `partner` (parent B),
      * returning a new factory representing their child.
@@ -534,6 +578,8 @@ export declare function batchFactory(factory: CharacterFactory, options: {
     prefix?: string;
     randomize?: boolean;
     saveConfigs?: boolean;
+    /** Max parallel renders. Defaults to 4. Use 1 for sequential. */
+    concurrency?: number;
 }, onProgress?: (current: number, total: number) => void): Promise<BatchResult[]>;
 export {};
 //# sourceMappingURL=character-factory.d.ts.map

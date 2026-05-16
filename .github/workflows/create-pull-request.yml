@@ -1,8 +1,9 @@
 name: Auto Create Pull Request
 
 on:
-  push:
-    branches:
+  workflow_dispatch:
+  # push:
+  #   branches:
 
 jobs:
   create-pull-request:

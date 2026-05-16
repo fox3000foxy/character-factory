@@ -26,37 +26,23 @@ export class Card {
         this.imageUrl = undefined;
     }
 }
+const FAKER_LOCALES = {
+    [Country.USA]: "en_US",
+    [Country.Canada]: "en_CA",
+    [Country.UK]: "en_GB",
+    [Country.Australia]: "en_AU",
+    [Country.Germany]: "de",
+    [Country.France]: "fr",
+    [Country.Sweden]: "sv",
+    [Country.Netherlands]: "nl",
+    [Country.Denmark]: "da",
+    [Country.Japan]: "ja",
+    [Country.China]: "zh_CN",
+    [Country.India]: "en_IN",
+    [Country.Brazil]: "pt_BR",
+};
 export function getFakerByCountry(country) {
-    switch (country) {
-        case Country.USA:
-            return import("@faker-js/faker/locale/en_US");
-        case Country.Canada:
-            return import("@faker-js/faker/locale/en_CA");
-        case Country.UK:
-            return import("@faker-js/faker/locale/en_GB");
-        case Country.Australia:
-            return import("@faker-js/faker/locale/en_AU");
-        case Country.Germany:
-            return import("@faker-js/faker/locale/de");
-        case Country.France:
-            return import("@faker-js/faker/locale/fr");
-        case Country.Sweden:
-            return import("@faker-js/faker/locale/sv");
-        case Country.Netherlands:
-            return import("@faker-js/faker/locale/nl");
-        case Country.Denmark:
-            return import("@faker-js/faker/locale/da");
-        case Country.Japan:
-            return import("@faker-js/faker/locale/ja");
-        case Country.China:
-            return import("@faker-js/faker/locale/zh_CN");
-        case Country.India:
-            return import("@faker-js/faker/locale/en_IN");
-        case Country.Brazil:
-            return import("@faker-js/faker/locale/pt_BR");
-        default:
-            return import("@faker-js/faker");
-    }
+    return import(`@faker-js/faker/locale/${FAKER_LOCALES[country] ?? ""}`);
 }
 async function generateConfigFromCountry(country) {
     const gender = pickEnum(Gender);
@@ -101,7 +87,7 @@ async function generateConfigFromCountry(country) {
     factory
         .fromConfig(config)
         .setMood(Mood.Happy)
-        .setHeadShape(Gender.Female ? HeadShape.Angular : pickEnum(HeadShape))
+        .setHeadShape(gender === Gender.Female ? HeadShape.Angular : pickEnum(HeadShape))
         .buildPng()
         .then((png) => writeFile(`${process.cwd()}/avatars/${country}${config.seed}.png`, png, (err) => {
         if (err) {
