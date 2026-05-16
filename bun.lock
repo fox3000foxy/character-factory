@@ -5,18 +5,18 @@
     "": {
       "name": "module-template",
       "dependencies": {
-        "@dicebear/collection": "latest",
-        "@dicebear/core": "latest",
-        "sharp": "latest",
+        "@dicebear/collection": "^9.4.2",
+        "@dicebear/core": "^9.4.2",
+        "sharp": "^0.34.5",
       },
       "devDependencies": {
-        "@biomejs/biome": "latest",
-        "@faker-js/faker": "latest",
-        "@types/bun": "latest",
-        "@types/node": "latest",
+        "@biomejs/biome": "^2.4.15",
+        "@faker-js/faker": "^10.4.0",
+        "@types/bun": "^1.3.14",
+        "@types/node": "^25.8.0",
       },
       "peerDependencies": {
-        "typescript": "latest",
+        "typescript": "^6.0.3",
       },
     },
   },
