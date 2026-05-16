@@ -214,21 +214,53 @@ npm install character-factory
 
 ## API Reference
 
-### `generateConfigFromCountry(country: Country): Promise<Card>`
-Generates a character configuration based on the specified country.
-
-### `batchGenerateConfigs(count: number, country: Country): Promise<Card[]>`
-Generates multiple character configurations for a given country.
-
 ### `CharacterFactory`
-A class for creating and managing character configurations.
+A fluent builder class for creating and managing character configurations.
 
-#### Methods
-- `fromConfig(config: CharacterConfig): this`
-- `randomizeFace(): this`
-- `randomizeHair(): this`
-- `setMood(mood: Mood): this`
-- `toJSON(): string`
+#### Constructor
+- `new CharacterFactory(seed?: string)` - Creates a new factory, optionally with a deterministic seed
+
+#### Configuration Methods
+- `fromConfig(config: CharacterConfig): this` - Load a full configuration
+- `fromPartialConfig(partial: DeepPartial<CharacterConfig>): this` - Merge partial config
+- `patchConfig(partial): this` - Apply a partial patch
+- `getConfig(): Readonly<CharacterConfig>` - Get current configuration snapshot
+
+#### Randomization Methods
+- `randomize(): this` - Randomize all traits
+- `randomizeFace(): this` - Randomize face traits
+- `randomizeHair(): this` - Randomize hair traits
+- `randomizeAccessories(): this` - Randomize accessories
+- `randomizeMood(): this` - Randomize mood
+
+#### Genetics Engine
+- `projectChild(partner: CharacterConfig, options?): CharacterFactory` - Simulate genetic inheritance
+
+#### Export Methods
+- `buildSvg(): string` - Render as SVG
+- `buildPng(size?: number): Promise<Buffer>` - Render as PNG (requires sharp)
+- `toJSON(): string` - Serialize to JSON
+- `toBase64(): string` - Serialize to Base64
+
+### `batchFactory(factory, options, onProgress?)`
+Generates multiple characters from a base factory with automatic metadata generation.
+
+**Options:**
+- `count` - Number of characters to generate
+- `outputDir` - Output directory
+- `size` - PNG size (default: 256)
+- `prefix` - Filename prefix (default: "character")
+- `randomize` - Randomize each clone (default: false)
+- `saveConfigs` - Save JSON configs (default: false)
+
+### Utility Functions
+- `pick<T>(arr: T[]): T` - Pick random element from array
+- `pickEnum<T>(e: Record<string, T>): T` - Pick random enum value
+
+### Exports from `lorelei-traits.ts`
+Enums: `Eyes`, `Eyebrows`, `Mouth`, `HeadShape`, `Nose`, `Hair`, `HairColor`, `SkinColor`, `EyeColor`, `Glasses`, `Earrings`, `Beard`, `HairAccessory`, `BackgroundColor`
+
+Arrays: `HairMale`, `HairFemale`, `HairUnisex`, `HairBald`
 
 ## License
 
