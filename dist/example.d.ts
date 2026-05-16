@@ -25,6 +25,6 @@ export declare class Card implements ICard {
     imageUrl?: string;
     constructor();
 }
-export declare function getFakerByCountry(country: Country): Promise<typeof import("@faker-js/faker/locale/en_US")>;
+export declare function getFakerByCountry(country: Country): Promise<any>;
 export {};
 //# sourceMappingURL=example.d.ts.map
